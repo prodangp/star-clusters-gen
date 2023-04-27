@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import gpytorch
 from matplotlib import pyplot as plt
-from utils import Clusters, estimate_density, feature_scaling
+from utils import Clusters, estimate_density, feature_scaling, normalize_density
 from GP_model import ExactGPModel
 
 # data
@@ -12,7 +12,7 @@ clusters = Clusters(features='pos')
 X, cluster_name_tr = clusters.next_train(return_name=True)
 
 # normalize data
-y = feature_scaling(estimate_density(X))
+y, d_min, d_max = normalize_density(estimate_density(X))
 X = feature_scaling(X)
 
 # initialize likelihood and model
@@ -22,7 +22,7 @@ train_y = torch.from_numpy(y).float().cuda()
 model = ExactGPModel(train_x, train_y, likelihood).cuda()
 
 
-timestamp = time.strftime("3D_baseline_march%d_t%H%M", time.gmtime())
+timestamp = time.strftime("3D_baseline_april%d_t%H%M", time.gmtime())
 model = model.cuda()
 likelihood = likelihood.cuda()
 
@@ -49,7 +49,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=0.01)  # Includes GaussianLi
 
 # "Loss" for GPs - the marginal log likelihood
 mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
-training_iter = 5000
+training_iter = 500
 val_on = False
 # norm_train = 1000 / clusters.count_stars_train()
 for i in range(training_iter):

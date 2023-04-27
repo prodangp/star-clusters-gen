@@ -3,10 +3,11 @@ import numpy as np
 import multiprocessing
 from matplotlib import pyplot as plt
 import scipy.stats as st
+from scipy.optimize import nnls
 from scipy.special import gamma
 
 from GP_model import ExactGPModel
-from utils import Clusters, estimate_density, feature_scaling, reverse_scaling
+from utils import Clusters, estimate_density, feature_scaling, reverse_scaling, normalize_density
 from samplers import Sampler
 
 
@@ -27,7 +28,7 @@ class APESSampler(Sampler):
         self.density_new = None
         self.i = None
         self.h = (4 / (self.walkers_per_block * (self.num_dimensions + 2))) ** (1 / (self.num_dimensions + 4))
-        self.w = np.ones((self.walkers_nb, self.num_dimensions)) / self.walkers_per_block
+        self.w = np.ones((self.walkers_nb, 1)) / self.walkers_per_block
         self.cov_matrix = None
 
     def predict_density(self, grid_point):
@@ -46,6 +47,19 @@ class APESSampler(Sampler):
             cov_matrix += np.outer(xk - xk_ave, xk - xk_ave)
         self.cov_matrix = cov_matrix / (self.walkers_per_block - 1)
 
+    def update_weights(self):
+        x_ = self.realizations[self.L[1 - self.i]]
+        k_ = np.zeros((self.walkers_per_block, self.walkers_per_block))
+        # Define the matrix K and the vector pi
+        for i in range(self.walkers_per_block):
+            for j in range(self.walkers_per_block):
+                k_[i][j] = self.kernel_func(np.dot(np.dot(x_[i] - x_[j], np.linalg.inv(self.cov_matrix)),
+                                                   x_[i] - x_[j]) / self.h, self.cov_matrix) \
+                           / (self.h ** self.num_dimensions)
+
+        # Solve the NNLS problem min||Kw - pi||^2 subject to w >= 0
+        self.w, _ = nnls(k_, self.density[self.L[1 - self.i]])
+
     def kernel_func(self, d2, cov_matrix, kernel='student'):
         # Gaussian kernel
         if kernel == 'gauss':
@@ -58,12 +72,12 @@ class APESSampler(Sampler):
 
     def approx_density(self, x, i):
         p = 0
-        for k in self.L[i]:
-            xk = self.realizations[k]
+        for k in range(self.walkers_per_block):
+            xk = self.realizations[self.L[i][k]]
             mahalanobis_distance = np.dot(np.dot(x - xk, np.linalg.inv(self.cov_matrix)), x - xk)
             p += self.w[k] * self.kernel_func(mahalanobis_distance / self.h, self.cov_matrix) / (
                         self.h ** self.num_dimensions)
-        return p[0]
+        return p
 
     def compute_acceptance_probs(self, k):
         return np.min([1, (self.approx_density(self.x[k], 1 - self.i)
@@ -92,13 +106,16 @@ class APESSampler(Sampler):
             mu = 0
             sigma = cov[d]
             samples[:, d] = st.truncnorm((a - mu) / sigma, (b - mu) / sigma, mu, sigma).rvs(size=self.walkers_nb)
+        self.density = self.predict_density(samples)
         return samples
 
     def prepare_new_draw(self, block):
         self.i = block - 1
-        sampler.update_cov_matrix(1 - self.i)
+        self.update_cov_matrix(1 - self.i)
+        self.density = self.predict_density(self.realizations)
+        self.update_weights()
         if self.random_walk:
-            cov_p = np.random.uniform(0.0001, 0.01)
+            cov_p = np.random.uniform(0.001, 0.1)
             cov_v = np.random.uniform(0.001, 0.01, 3)
             cov_m = np.random.uniform(0.01, 0.1)
             cov = [cov_p] * 3 + list(cov_v) + [cov_m]
@@ -111,13 +128,6 @@ class APESSampler(Sampler):
         self.density_new = self.predict_density(self.x_new)
 
 
-def predict_density(grid_point):
-    with torch.no_grad():
-        grid_point = torch.from_numpy(grid_point).float().unsqueeze(0).cpu()
-        y_preds = likelihood(model(grid_point))
-        return y_preds.mean[0].numpy()
-
-
 if __name__ == '__main__':
     import torch
     import gpytorch
@@ -126,7 +136,7 @@ if __name__ == '__main__':
     X, cluster_name_tr = clusters.next_train(return_name=True)
 
     # normalize data
-    y, means, stds = feature_scaling(estimate_density(X), return_mean_std=True)
+    y, d_min, d_max = normalize_density(estimate_density(X))
     X = feature_scaling(X)
     # initialize likelihood and model
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
@@ -134,16 +144,13 @@ if __name__ == '__main__':
     train_y = torch.from_numpy(y).float().cpu()
     model = ExactGPModel(train_x, train_y, likelihood).cpu()
 
-
-
-
     # Load saved model weights
-    model_path = './results/3D_baseline_march29_t1809'
+    model_path = './results/3D_baseline_april18_t0716'
     checkpoint = torch.load(f'{model_path}/model.pth')
     model.load_state_dict(checkpoint)
 
     timestamp = time.strftime("march%d_t%H%M", time.gmtime())
-    sampler = APESSampler(model, likelihood, clusters, 5000, walkers_nb=50, random_seed=40)
+    sampler = APESSampler(model, likelihood, clusters, 5000, walkers_nb=50, random_seed=40, random_walk=True)
     samples = []
     # sampler.i = 0
     # sampler.realizations = sampler.sample_walkers()
@@ -153,11 +160,10 @@ if __name__ == '__main__':
     # print(sampler.density)
     # print(sampler.compute_acceptance_probs(0))
 
-    max_iter = 100
+    max_iter = 80
     burn_in = 30
     rejected = 0
     sampler.realizations = sampler.sample_walkers()
-    sampler.density = predict_density(sampler.realizations)
     np.random.seed(44)
     t0 = time.time()
 
@@ -218,15 +224,15 @@ if __name__ == '__main__':
             iter_count -= burn_in
             rejected = 0
 
-    np.save(f'{model_path}/APES_5000_50_student.npy', samples)
-    x = samples
-    y_x = reverse_scaling(feature_scaling(estimate_density(x)), means=means, stds=stds)
+    np.save(f'{model_path}/APES_4000_50_student_RW.npy', samples)
+    x = np.array(samples)
+    #y_x = reverse_scaling(feature_scaling(estimate_density(x)), means=mean, stds=std)
 
     # Create the figure and axes objects
     fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(10, 4))
 
     # Plot the data and the estimate density on the first axis
-    ax1.scatter(x[:, 0], x[:, 1], c=y_x, edgecolor="k", s=60, cmap="plasma")
+    ax1.scatter(x[:, 0], x[:, 1], c=estimate_density(x), edgecolor="k", s=60, cmap="plasma")
     ax1.set_title('APES', fontsize=16)
     ax1.set_xlabel('x (pc)', fontsize=12)
     ax1.set_ylabel('y (pc)', fontsize=12)
@@ -240,6 +246,6 @@ if __name__ == '__main__':
     ax2.set_xlabel('x (pc)', fontsize=12)
     ax2.set_ylabel('y (pc)', fontsize=12)
     fig.colorbar(ax2.collections[0], ax=ax2)
-    plt.savefig(f'{model_path}/MCMC.png')
+    plt.savefig(f'{model_path}/APES_RW.png')
     # Show the plot
     plt.show()

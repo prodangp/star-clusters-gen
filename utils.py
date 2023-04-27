@@ -37,6 +37,23 @@ def estimate_density(x, k=5):
     return dens
 
 
+def normalize_density(density):
+    log_density = np.log(density + 1)
+    # Shift and rescale density to be in the range [0, 1]
+    density_min = np.min(log_density)
+    density_shifted = log_density - density_min
+    density_max = np.max(density_shifted)
+    density_rescaled = density_shifted / density_max
+    return density_rescaled, density_min, density_max
+
+
+def inverse_rescaled_density(rescaled_density, density_min, density_max):
+    density_shifted = rescaled_density * density_max
+    density = density_shifted + density_min
+    density = np.exp(density) - 1
+    return density
+
+
 def feature_scaling(inputs, return_mean_std=False):
     # Compute the mean and standard deviation of each feature
     means = np.mean(inputs, axis=0)
