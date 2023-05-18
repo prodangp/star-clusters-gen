@@ -7,7 +7,8 @@ from scipy.optimize import nnls
 from scipy.special import gamma
 
 from GP_model import ExactGPModel
-from utils import Clusters, estimate_density, feature_scaling, reverse_scaling, normalize_density
+from utils import estimate_density, feature_scaling, reverse_scaling, normalize_density
+from clusters import Clusters
 from samplers import Sampler
 
 

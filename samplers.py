@@ -5,33 +5,35 @@ import torch
 import scipy.stats as st
 
 
+def predict_density(model, likelihood, grid_point):
+    grid_point = torch.from_numpy(grid_point).float().unsqueeze(0).cuda()
+    # f_preds = self.model(grid_point)
+    y_preds = likelihood(model(grid_point))
+    with torch.no_grad():
+        return y_preds.mean[0].cpu().numpy()
+    # return y_preds.sample()[0].cpu().numpy()
+
+
 class Sampler:
-    def __init__(self, model, likelihood, clusters, num_samples, random_seed, verbose=True):
+    def __init__(self, num_samples=1000, num_dimensions=3, random_seed=42, verbose=True):
         """
         Initialize the sampler.
 
         Parameters
         ----------
-        model: ExactGP model
-            The model we trained for generating new realizations.
-        likelihood: Likelihood function
-            The likelihood function we use to predict the density
-        clusters: Clusters object
-            Object containing information about the simulation clusters
         num_samples: int
             The number of samples to generate.
         random_seed: int
             The random seed used to initialize the random number generator.
+        verbose: bool
+            True if we show progress messages while the algorithm is running
         """
-        model.eval()
-        self.model = model
-        likelihood.eval()
-        self.likelihood = likelihood
-        self.clusters = clusters
+
         self.num_samples = num_samples
+        self.num_dimensions = num_dimensions
         self.random_seed = random_seed
-        self.num_dimensions = len(clusters.mask)
         self.verbose = verbose
+        self.bounds = [[-15, 15]] * self.num_dimensions
 
     def _interpolate(self, point):
         """
@@ -52,9 +54,9 @@ class Sampler:
         """
         return
 
-    def truncated_normal(self, mean, cov, size):
+    def generate_new_samples(self, mean, cov, size, truncated=False):
         """
-        Generate samples from a truncated normal distribution.
+        Generate samples from  normal / truncated normal distribution.
 
         Parameters
         ----------
@@ -63,7 +65,9 @@ class Sampler:
         cov: array
             The covariances of the normal distributions for each feature.
         size: int
-            The number of samples to generate.
+            The number of new samples to generate.
+        truncated: bool
+            If True, use the truncated normal distribution to generate new samples.
 
         Returns
         -------
@@ -73,29 +77,21 @@ class Sampler:
         # initialize the samples array
         samples = np.zeros((size, len(mean)))
 
-        #  specifying the bounds of the truncated normal distribution in each dimension.
-        bounds = self.clusters.get_ave_bounds()
-
         # Generate samples from the truncated normal distribution in each dimension
         for d in range(len(mean)):
-            a, b = bounds[d]
             mu = mean[d]
-            sigma = cov[d]  # if d else cov * 10
-            samples[:, d] = st.truncnorm((a - mu) / sigma, (b - mu) / sigma, mu, sigma).rvs(size=size)
-
+            sigma = cov[d]
+            if truncated:
+                a, b = self.bounds[d]
+                samples[:, d] = st.truncnorm((a - mu) / sigma, (b - mu) / sigma, mu, sigma).rvs(size=size)
+            else:
+                samples[:, d] = np.random.normal(mu, sigma)
         return samples
-
-    def predict_density(self, grid_point):
-        grid_point = torch.from_numpy(grid_point).float().unsqueeze(0).cuda()
-        # f_preds = self.model(grid_point)
-        y_preds = self.likelihood(self.model(grid_point))
-        with torch.no_grad():
-            return y_preds.mean[0].cpu().numpy()
-        # return y_preds.sample()[0].cpu().numpy()
 
 
 class APESSampler(Sampler):
-    def __init__(self, model, likelihood, clusters, num_samples, random_seed, walkers_nb=320, random_walk=False, verbose=True):
+    def __init__(self, model, likelihood, clusters, num_samples, random_seed, walkers_nb=320, random_walk=False,
+                 verbose=True):
         super().__init__(model, likelihood, clusters, num_samples, random_seed, verbose)
         self.walkers_nb = walkers_nb
         self.random_walk = random_walk
@@ -139,13 +135,13 @@ class APESSampler(Sampler):
             xk = self.realizations[k]
             mahalanobis_distance = np.dot(np.dot(x - xk, np.linalg.inv(self.cov_matrix)), x - xk)
             p += self.w[k] * self.kernel_func(mahalanobis_distance / self.h, self.cov_matrix) / (
-                        self.h ** self.num_dimensions)
+                    self.h ** self.num_dimensions)
         return p[0]
 
     def compute_acceptance_probs(self, k):
         return np.min([1, (self.approx_density(self.x[k], 1 - self.i)
-                      / self.approx_density(self.x_new[k], 1 - self.i))
-                      * (self.density_new[k] / self.density[self.L[self.i][k]])])
+                           / self.approx_density(self.x_new[k], 1 - self.i))
+                       * (self.density_new[k] / self.density[self.L[self.i][k]])])
 
     def sample_walkers(self):
         """
@@ -255,6 +251,60 @@ class APESSampler(Sampler):
 
 
 class MCMCSampler(Sampler):
+    def sample(self, pdf, step_size=0.1, random_walk=False):
+        """
+        Generate samples from the density map using MCMC sampling*.
+        * this is a modified version in which the previous value is not kept
+        when a sample is rejected - the sampler iterates again until the counter
+        reaches the number of desired samples.
+
+        Returns
+        -------
+        samples: array
+            An array of shape (num_samples, num_dimensions) containing the generated samples.
+        """
+        # initialize the samples array and set the initial sample, declare const
+        samples = np.zeros((self.num_samples, self.num_dimensions))
+        samples[0] = np.zeros(self.num_dimensions)
+        density = pdf(samples[0])
+        prev_density = density.copy()
+        np.random.seed(self.random_seed)
+        t0 = time.time()
+        # run the MCMC sampler
+        count = 1
+        rejected = 0
+        step_size = [step_size] * self.num_dimensions
+        while count < self.num_samples:
+            sampling_center = samples[count - 1] if not random_walk else samples[np.random.randint(0, count)]
+
+            # sample a new point from a truncated normal distribution centered at the current point
+            new_point = self.generate_new_samples(mean=sampling_center, cov=step_size, size=1)[0]
+            # the density at the new point
+            density = pdf(new_point)
+
+            # the acceptance probability
+            acceptance_prob = np.min([1.0, density / prev_density])
+
+            # apply Metropolis algorithm to decide if accept the new point
+
+            if self.verbose and count % 100 == 0:
+                t1 = time.time()
+                print('%d/%d generated samples [time: %.3f minutes]' % (count, self.num_samples, (t1 - t0) / 60))
+                print('Acceptance rate: %.4f ' % (count / (count + rejected)))
+
+            if np.random.rand() < acceptance_prob:
+                samples[count] = new_point
+                count += 1
+                prev_density = density.copy()
+                self.verbose = True
+            else:
+                rejected += 1
+                self.verbose = False
+
+        return samples
+
+
+class MCMCSamplerF(Sampler):
     def sample(self, step_size=0.1, goback=False, random_walk=False, ref=None):
         """
         Generate samples from the density map using MCMC sampling*.
@@ -329,15 +379,12 @@ class MCMCSampler(Sampler):
                     prev_density = self.predict_density(ref[count])
             else:
                 pass
-                # samples[count] = samples[count - 1].copy()
-                # p = np.random.choice(3, 1)[0]
-                # samples[count][p + 1] = -samples[count][p + 1]
 
         return samples
 
 
 class RejectionSampler(Sampler):
-    def sample(self):
+    def sample(self, pdf):
         """
         Generate samples from the density map using rejection sampling.
 
@@ -350,13 +397,10 @@ class RejectionSampler(Sampler):
         # initialize, declare the sampler constants
 
         max_density = 1
-        bounds = self.clusters.get_ave_bounds()
 
         samples = np.zeros((self.num_samples, self.num_dimensions))
         samples[0] = np.zeros(self.num_dimensions)
 
-        density = self.predict_density(samples[0])
-        prev_density = density.copy()
         np.random.seed(self.random_seed)
 
         t0 = time.time()
@@ -367,11 +411,11 @@ class RejectionSampler(Sampler):
             # sample a point uniformly at random from the sample space
             sample = []
             for d in range(self.num_dimensions):
-                lower, upper = bounds[d]
+                lower, upper = self.bounds[d]
                 sample.append(np.random.uniform(lower, upper))
 
             # accept the sample with probability proportional to its density
-            density = self.predict_density(np.array(sample))
+            density = pdf(np.array(sample))
             if density > max_density:
                 max_density = density
             if np.random.rand() < density / max_density:
