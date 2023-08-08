@@ -1,18 +1,22 @@
 import glob
 import numpy as np
 from matplotlib import pyplot as plt
+from utils import feature_scaling
 
 
 class Clusters:
-    def __init__(self, features='all', n=5000, path="./data/", generate=False,
-                 mean=None, cov=None):
+    def __init__(self, features='all', mass=None, n=5000, path="C:/Users/georg/PycharmProjects/star-clusters-gen/data/",
+                 generate=False, mean=None, cov=None):
         self.N = n
+        self.features = features
         if features == 'all':
             self.mask = range(0, 7)
         elif features == 'pos':
             self.mask = range(1, 4)
         elif features == 'vel':
             self.mask = range(4, 7)
+        elif features == 'phase space':
+            self.mask = range(1, 7)
         else:
             print(f'[WARNING] {features} features not recognized! Full features are used.')
             self.mask = range(0, 7)
@@ -21,6 +25,7 @@ class Clusters:
         self.iter_val = 0
         self.n_train = 7
         self.n_val = 3
+
         if generate:
             self._mean = [0] * self.dims if mean == None else mean
             self._cov = self.generate_random_spd_matrix() if cov == None else cov
@@ -32,15 +37,73 @@ class Clusters:
             N_CLUSTERS = len(files)
             self.data_train = np.empty((self.n_train,), dtype=np.ndarray)
             self.data_val = np.empty((self.n_val,), dtype=np.ndarray)
+
             self.names_train = []
             self.names_val = []
             for i in range(N_CLUSTERS):
                 if i < self.n_train:
                     self.data_train[i] = np.loadtxt(files[i], skiprows=1)[:, self.mask]
+                    if mass == 'log':
+                        self.data_train[i][:, 0] = np.log(self.data_train[i][:, 0])
                     self.names_train.append(files[i][-9:])
                 else:
                     self.data_val[i - self.n_train] = np.loadtxt(files[i], skiprows=1)[:, self.mask]
+                    if mass == 'log':
+                        self.data_val[i - self.n_train][:, 0] = np.log(self.data_val[i - self.n_train][:, 0])
                     self.names_val.append(files[i][-9:])
+            if features == 'all':
+                for i in range(N_CLUSTERS):
+                    if i < self.n_train:
+                        cm_position = np.sum(self.data_train[i][:, 0][:, np.newaxis] * self.data_train[i][:, 1:4],
+                                              axis=0) / np.sum(self.data_train[i][:, 0])
+                        cm_velocity = np.sum(self.data_train[i][:, 0][:, np.newaxis] *
+                                              self.data_train[i][:, 4:], axis=0) / np.sum(self.data_train[i][:, 0])
+                        self.data_train[i][:, 1:4] = self.data_train[i][:, 1:4] - cm_position
+                        self.data_train[i][:, 4:] = self.data_train[i][:, 4:] - cm_velocity
+                    else:
+                        cm_position = np.sum(self.data_val[i - self.n_train][:, 0][:, np.newaxis] *
+                                              self.data_val[i - self.n_train][:, 1:4], axis=0) / \
+                                      np.sum(self.data_val[i - self.n_train][:, 0])
+                        cm_velocity = np.sum(self.data_val[i - self.n_train][:, 0][:, np.newaxis] *
+                                              self.data_val[i - self.n_train][:, 4:], axis=0) / \
+                                      np.sum(self.data_val[i - self.n_train][:, 0])
+                        self.data_val[i - self.n_train][:, 1:4] = self.data_val[i - self.n_train][:, 1:4] - cm_position
+                        self.data_val[i - self.n_train][:, 4:] = self.data_val[i - self.n_train][:, 4:] - cm_velocity
+            elif features == 'phase space':
+                for i in range(N_CLUSTERS):
+                    if i < self.n_train:
+                        cm_position = np.sum(self.data_train[i][:, 0][:, np.newaxis] * self.data_train[i][:, :3],
+                                              axis=0) / \
+                                      np.sum(self.data_train[i][:, 0])
+                        cm_velocity = np.sum(self.data_train[i][:, 0][:, np.newaxis] * self.data_train[i][:, 3:],
+                                              axis=0) / \
+                                      np.sum(self.data_train[i][:, 0])
+                        self.data_train[i][:, :3] = self.data_train[i][:, :3] - cm_position
+                        self.data_train[i][:, 3:] = self.data_train[i][:, 3:] - cm_velocity
+                    else:
+                        cm_position = np.sum(self.data_val[i - self.n_train][:, 0][:, np.newaxis] *
+                                              self.data_val[i - self.n_train][:, :3], axis=0) / \
+                                      np.sum(self.data_val[i - self.n_train][:, 0])
+                        cm_velocity = np.sum(self.data_val[i - self.n_train][:, 0][:, np.newaxis] *
+                                              self.data_val[i - self.n_train][:, 3:], axis=0) / \
+                                      np.sum(self.data_val[i - self.n_train][:, 0])
+                        self.data_val[i - self.n_train][:, :3] = self.data_val[i - self.n_train][:, :3] - cm_position
+                        self.data_val[i - self.n_train][:, 3:] = self.data_val[i - self.n_train][:, 3:] - cm_velocity
+        # if features == 'all' and rescale:
+        #     _, self.means, self.stds = feature_scaling(np.concatenate(self.data_train), return_mean_std=True)
+        #     for i in range(N_CLUSTERS):
+        #         if i < self.n_train:
+        #             self.data_train[i] = (self.data_train[i] - self.means) / self.stds
+        #         else:
+        #             self.data_val[i - self.n_train] = (self.data_val[i - self.n_train] - self.means) / self.stds
+
+    def get_cluster(self, name):
+        data = np.loadtxt(self.path + f'sink_{name}.dat', skiprows=1)[:, self.mask]
+        cm_position = np.sum(data[:, 0][:, np.newaxis] * data[:, 1:4], axis=0) / np.sum(data[:, 0])
+        cm_velocity = np.sum(data[:, 0][:, np.newaxis] * data[:, 4:], axis=0) / np.sum(data[:, 0][:, np.newaxis])
+        data[:, 1:4] = data[:, 1:4] - cm_position
+        data[:, 4:] = data[:, 4:] - cm_velocity
+        return data
 
     def next_train(self, return_name=False):
         self.iter_train += 1
@@ -70,17 +133,6 @@ class Clusters:
         I = np.eye(self.dims)
         A += 5 * I
         return A
-
-    def subsample(self, n=300, plot=True):
-        # select a random subsample
-        idx = np.random.choice(np.arange(len(self.data)), n, False)
-        x = self.data[idx]
-        if plot and x.shape[1] == 2:
-            plt.scatter(self.data[:, 0], self.data[:, 1], s=5)
-            plt.scatter(x[:, 0], x[:, 1], c=estimate_density(x), edgecolor="k", s=60, cmap="plasma")
-            plt.colorbar()
-            plt.show()
-        return x
 
     def get_bounds(self, X):
         # Getter for the bounds of the density map in each dimension

@@ -2,9 +2,12 @@ import gpytorch
 
 
 class ExactGPModel(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, likelihood):
+    def __init__(self, train_x, train_y, likelihood, linear=False):
         super(ExactGPModel, self).__init__(train_x, train_y, likelihood)
-        self.mean_module = gpytorch.means.LinearMean(train_x[0].size()[0])
+        if linear:
+            self.mean_module = gpytorch.means.LinearMean(train_x[0].size()[0])
+        else:
+            self.mean_module = gpytorch.means.ConstantMean()
         self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
 
     def forward(self, x):

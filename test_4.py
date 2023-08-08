@@ -7,33 +7,37 @@ from clusters import Clusters
 from GP_model import ExactGPModel
 
 
-# data
-clusters = Clusters(features='all')
+
 # initialize likelihood and model
 likelihood = gpytorch.likelihoods.GaussianLikelihood()
-X, cluster_name_tr = clusters.next_train(return_name=True)
+
 # normalize data
 #y = normalize_density(feature_scaling(np.log(estimate_density(X, k=50)), method='MinMax'))
-y = normalize_density(estimate_density(X, k=50))
 
+data_path = 'C:/Users/georg/PycharmProjects/star-clusters-gen/data/chains'
 
+pe = np.load(f'{data_path}/pe_m1.e4.dat.npy')
+pe = np.log(pe[:-1])
+ke = np.load(f'{data_path}/ke_m1.e4.dat.npy')
+ke = np.log(ke[:-1])
 
+pe, mu_pe, std_pe = feature_scaling(pe, return_mean_std=True)
+ke, mu_ke, std_ke = feature_scaling(ke, return_mean_std=True)
+
+X = np.zeros((pe.shape[0] - 1, 3))
+X[:, 0] = pe[:-1].flatten()
+X[:, 1] = ke[:-1].flatten()
+X[:, 2] = ke[1:].flatten()
+
+y = feature_scaling(estimate_density(X))
 train_x = torch.from_numpy(X).float().cuda()
 train_y = torch.from_numpy(y).float().cuda()
-model = ExactGPModel(train_x, train_y, likelihood).cuda()
+model = ExactGPModel(train_x, train_y, likelihood, linear=True).cuda()
 
 # normalize data
 #y = normalize_density(feature_scaling(np.log(estimate_density(X, k=50)), method='MinMax'))
 #y = feature_scaling(np.log(estimate_density(X, k=50)), method='standardization')
 
-
-# noise
-noise_amount = 5000
-noise_amplitude = 1e-3
-extra = torch.from_numpy(np.random.normal(0, 1, (noise_amount - train_x.shape[0], 7))).float().cuda()
-train_x = torch.concatenate((train_x, extra))
-extra = torch.from_numpy(np.abs(np.random.normal(0, noise_amplitude, noise_amount - train_y.shape[0]))).float().cuda()
-train_y = torch.concatenate((train_y, extra))
 
 # # Generate a permutation of indices
 # indices = torch.randperm(len(train_x))
@@ -44,7 +48,7 @@ train_y = torch.concatenate((train_y, extra))
 #
 # print(min(train_y))
 # Load saved model weights
-checkpoint = torch.load('./results/7D_10c_aug01_t1649/model.pth')
+checkpoint = torch.load('./results_chains/chains_GP_pe_ke_5000iter_jul05_t1403/model.pth')
 #checkpoint = torch.load('./results/sim_1c_april06_t1115/model.pth')
 # Load weights into model
 model.load_state_dict(checkpoint)
