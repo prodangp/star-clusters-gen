@@ -10,13 +10,13 @@ from SDE_networks import DNN3L
 from clusters import Clusters
 from utils import sigma, g, DEVICE, generate_color_array, virial_ratio, normalize_density, feature_scaling, estimate_density
 
-clusters = Clusters(features='all', mass="log", rescale=False, path='./data/')
+clusters = Clusters(features='all', mass="log", rescale=False, path='../../data/')
 X, cluster_name_tr = clusters.next_train(return_name=True)
 x1 = X.copy()
 # normalize data
 y, d_min, d_max = normalize_density(estimate_density(X))
 X, mean, std = feature_scaling(X, return_mean_std=True)
-model_path = './results_SDE/SDE15_GP_DNN3L1000u_100it_0.005LR_jun17_t1852'
+model_path = '../../results_SDE/SDE15_GP_DNN3L1000u_100it_0.005LR_jun17_t1852'
 model = DNN3L()
 model = torch.load(f'{model_path}/model.pth')
 X = torch.from_numpy(X).float().cuda()

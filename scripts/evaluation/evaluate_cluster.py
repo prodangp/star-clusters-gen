@@ -29,8 +29,8 @@ plt.rc('lines', linewidth=2)
 sampling_method = 'EMCMC'
 ##############################
 # EMCMC
-model_path = "results_chains/chains_10c_GP_pe_ke_5000iter_aug06_t1616/"
-results_folder = "plots_gen_cluster_EMCMC_3000stars_s0.4_r1_Nc1000_minM0.5_aug08_t1331.npy"
+model_path = "../../results_chains/chains_10c_GP_pe_ke_5000iter_aug06_t1616/"
+results_folder = "0plots_gen_cluster_EMCMC_3000stars_s0.4_r1_Nc1000_minM0.5_aug08_t1331.npy"
 x = np.load(model_path + "gen_cluster_EMCMC_3000stars_s0.4_r1_Nc1000_minM0.5_aug08_t1331.npy")
 # 7D model
 # model_path = "results/7D_10c_aug01_t1649/"
@@ -79,12 +79,12 @@ plt.savefig(f'{model_path}/corner_xyz.png')
 plt.show()
 
 
-name = 'm1.e4'
-name2 = 'm4.e4'
+name = 'm9.e4'
+name2 = 'm1.e5'
 Xr = clusters.get_cluster(name)
 Xr2 = clusters.get_cluster(name2)
 
-# print(get_binaries(Xr), get_binaries(Xr2))
+print(get_binaries(Xr), get_binaries(Xr2))
 # Create the figure and axes objects
 fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(10, 4))
 

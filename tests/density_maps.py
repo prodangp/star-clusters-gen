@@ -24,7 +24,7 @@ train_y = torch.from_numpy(y).float().cpu()
 model = ExactGPModel(train_x, train_y, likelihood).cpu()
 
 # Load saved model weights
-model_path = './results/3D_baseline_april18_t0716'
+model_path = '../results/3D_baseline_april18_t0716'
 checkpoint = torch.load(f'{model_path}/model.pth')
 model.load_state_dict(checkpoint)
 n_grid = 25

@@ -27,12 +27,15 @@ sim1 = clusters.get_cluster('m1.e4')
 sim2 = clusters.get_cluster('m4.e4')
 sim3 = clusters.get_cluster('m9.e4')
 
-emcmc1 = np.load("results_chains/chains_10c_GP_pe_ke_5000iter_aug06_t1616/gen_cluster_EMCMC_3000stars_s0.2_r1.5_aug08_t0931.npy")
-emcmc2 = np.load("results_chains/chains_10c_GP_pe_ke_5000iter_aug06_t1616/gen_cluster_EMCMC_3000stars_s0.2_r1.5_Nc1000_minM0.5_aug08_t1224.npy")
-emcmc3 = np.load("results_chains/chains_10c_GP_pe_ke_5000iter_aug06_t1616/gen_cluster_EMCMC_3000stars_s0.4_r1_Nc1000_minM0.5_aug08_t1331.npy")
-nmmc = np.load("results/7D_10c_aug01_t1649_R/NMMC_aug05_t0957_1.0_cluster.npy")
-apes = np.load("results/7D_10c_aug07_t0753/APES_aug07_t1022_2874_80_student_RW=False.npy")
-mcmc = np.load("results/7D_10c_aug01_t1649_R/MCMC_aug04_t2148_0.25_cluster.npy")
+emcmc1 = np.load(
+    "../../results_chains/chains_10c_GP_pe_ke_5000iter_aug06_t1616/gen_cluster_EMCMC_3000stars_s0.2_r1.5_aug08_t0931.npy")
+emcmc2 = np.load(
+    "../../results_chains/chains_10c_GP_pe_ke_5000iter_aug06_t1616/gen_cluster_EMCMC_3000stars_s0.2_r1.5_Nc1000_minM0.5_aug08_t1224.npy")
+emcmc3 = np.load(
+    "../../results_chains/chains_10c_GP_pe_ke_5000iter_aug06_t1616/gen_cluster_EMCMC_3000stars_s0.4_r1_Nc1000_minM0.5_aug08_t1331.npy")
+nmmc = np.load("../../results/7D_10c_aug01_t1649_R/NMMC_aug05_t0957_1.0_cluster.npy")
+apes = np.load("../../results/7D_10c_aug07_t0753/APES_aug07_t1022_2874_80_student_RW=False.npy")
+mcmc = np.load("../../results/7D_10c_aug01_t1649_R/MCMC_aug04_t2148_0.25_cluster.npy")
 
 for x in [emcmc1, emcmc2, emcmc3, nmmc, apes, mcmc]:
     cm_position = np.sum(x[:, 0][:, np.newaxis] * x[:, 1:4], axis=0) / np.sum(x[:, 0])

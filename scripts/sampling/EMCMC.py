@@ -14,11 +14,11 @@ process = psutil.Process(os.getpid())
 mem_info = process.memory_info()
 initial_memory = mem_info.rss
 
-model_path = 'results_chains/chains_10c_GP_pe_ke_5000iter_aug06_t1616/'
+model_path = '../../results_chains/chains_10c_GP_pe_ke_5000iter_aug06_t1616/'
 
 # initialize likelihood and model
 likelihood = gpytorch.likelihoods.GaussianLikelihood()
-data_path = 'C:/Users/georg/PycharmProjects/star-clusters-gen/data/chains'
+data_path = '/data/chains'
 
 train = ["m1.e4", "m1.e5", "m2.e4", "m3.e4", "m4.e4", "m5.e4", "m6.e4"]
 
@@ -99,7 +99,7 @@ train_y = torch.from_numpy(y).float().cuda()
 model_ps = ExactGPModel(train_x, train_y, likelihood_ps).cuda()
 
 # Load saved model weights
-checkpoint = torch.load('./results/6D_10c_aug06_t0929/model.pth')
+checkpoint = torch.load('../../results/6D_10c_aug06_t0929/model.pth')
 # checkpoint = torch.load('./results/sim_1c_april06_t1115/model.pth')
 # Load weights into model
 model_ps.load_state_dict(checkpoint)
@@ -117,7 +117,7 @@ m_lower_bound = 0.5
 # mass dist with M > 0.1
 # m_dist = np.load(f'./results/GP_mass_all_clusters_aug06_t1007/mass_distribution_3000stars_aug06_t1106.npy')
 # mass dist with M > 0.5
-m_dist = np.load(f'./results/GP_mass_all_clusters_aug06_t1007/mass_distribution_3000stars_aug08_t1157_M13540.npy')
+m_dist = np.load(f'../../results/GP_mass_all_clusters_aug06_t1007/mass_distribution_3000stars_aug08_t1157_M13540.npy')
 e_pdf = lambda z: gp_pdf(z, model, likelihood)
 ps_pdf = lambda z: gp_pdf(z, model_ps, likelihood_ps)
 

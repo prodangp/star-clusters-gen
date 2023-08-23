@@ -4,23 +4,16 @@ import torch
 from torch.utils.data import DataLoader
 import gpytorch
 from matplotlib import pyplot as plt
-from utils import Data, feature_scaling
+from utils import Data, gp_pdf
 from GP_model import ExactGPModel
-from samplers import MCMCSampler, RejectionSampler
-
-
-def gp_pdf(proposed, model_, likelihood_):
-    with torch.no_grad():
-        proposed = torch.from_numpy(proposed).float().unsqueeze(0).cuda()
-        y_preds = likelihood_(model_(proposed))
-        return y_preds.mean[0].cpu().numpy()
+from samplers import MetropolisSampler
 
 
 # LOADING MODEL
 # initialize likelihood and model
 likelihood = gpytorch.likelihoods.GaussianLikelihood()
 batch_size = 1000
-model_path = './results_rosenbrock/MCMC_10k_B1k_may12_t1314'
+model_path = '../../results_rosenbrock/MCMC_10k_B1k_may12_t1314'
 x = np.load(f'{model_path}/x.npy')
 dataset = Data(x)
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
@@ -37,17 +30,19 @@ model.load_state_dict(checkpoint)
 model.eval()
 likelihood.eval()
 
-# SAMPLING
-# sampler = MCMCSampler(num_samples=10000, num_dimensions=2, random_seed=1565)
-# step_size = 0.4
-# samples = sampler.sample(rosenbrock, step_size=step_size, random_walk=True)
-# # sampler = RejectionSampler(num_samples=1500, num_dimensions=2)
-# # samples = sampler.sample(rosenbrock)
-# x = samples
-# np.save('rosenbrock_sampled', np.array(x))
-#x = np.load('rosenbrock_sampled.npy')
-
 epdf = lambda z: gp_pdf(z, model, likelihood)
+
+# SAMPLING
+sampler = MetropolisSampler(num_samples=10000, num_dimensions=2, random_seed=1565)
+step_size = 0.4
+samples = sampler.sample(epdf, step_size=step_size, random_walk=True)
+# sampler = RejectionSampler(num_samples=1500, num_dimensions=2)
+# samples = sampler.sample(rosenbrock)
+x = samples
+np.save('rosenbrock_sampled', np.array(x))
+x = np.load('rosenbrock_sampled.npy')
+
+
 
 # Create a grid of points in the x1-x2 plane
 x1_range = np.linspace(-4, 4, 200)

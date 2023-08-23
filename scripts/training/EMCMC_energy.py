@@ -24,7 +24,7 @@ plt.rc('font', **font)
 plt.rc('patch', edgecolor='#E6E6E6')
 plt.rc('lines', linewidth=2)
 
-data_path = './data/chains'
+data_path = '../../data/chains'
 train = ["m1.e4", "m1.e5", "m2.e4", "m3.e4", "m4.e4", "m5.e4", "m6.e4"]
 val = ["m7.e4", "m8.e4", "m9.e4"]
 

@@ -7,7 +7,6 @@ import gpytorch
 from matplotlib import pyplot as plt
 from utils import Data
 from GP_model import ExactGPModel
-from samplers import MCMCSampler, RejectionSampler
 
 
 def rosenbrock(x):
@@ -16,16 +15,7 @@ def rosenbrock(x):
     return np.exp(-100 * (x2 - x1 ** 2) ** 2 + (1 - x1) ** 2)
 
 
-# SAMPLING
-# sampler = MCMCSampler(num_samples=10000, num_dimensions=2, random_seed=1565)
-# step_size = 0.4
-# samples = sampler.sample(rosenbrock, step_size=step_size, random_walk=True)
-# # sampler = RejectionSampler(num_samples=1500, num_dimensions=2)
-# # samples = sampler.sample(rosenbrock)
-# x = samples
-# np.save('rosenbrock', np.array(x))
-
-x = np.load('results_rosenbrock/MCMC_50k_B1k_may10_t1056/rosenbrock.npy')
+x = np.load('../../results_rosenbrock/MCMC_50k_B1k_may10_t1056/rosenbrock.npy')
 
 # Create a grid of points in the x1-x2 plane
 x1_range = np.linspace(-5, 5, 1000)

@@ -81,7 +81,7 @@ def process_cluster(cluster):
 
 clusters = Clusters()
 
-save_path = './data/chains/'
+save_path = '../../data/chains/'
 try:
     os.mkdir(save_path)
 except:

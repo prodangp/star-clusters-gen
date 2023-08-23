@@ -7,7 +7,7 @@ from clusters import Clusters
 clusters = Clusters(features='all')
 Xr, name = clusters.next_train(return_name=True)
 Xr2, name2 = clusters.next_train(return_name=True)
-mc1 = np.load('./results/GP_mass_all_clusters_aug06_t1007/mass_distribution_3000stars_aug08_t1025.npy')
+mc1 = np.load('../../results/GP_mass_all_clusters_aug06_t1007/mass_distribution_3000stars_aug08_t1025.npy')
 plt.hist(mc1, bins=50, density=True, alpha=0.8)
 plt.legend()
 plt.show()

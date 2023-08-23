@@ -1,7 +1,6 @@
 import numpy as np
 from sklearn.neighbors import KernelDensity
 import matplotlib.pyplot as plt
-import scipy.stats as st
 import gpytorch
 import torch
 from clusters import Clusters
@@ -32,7 +31,7 @@ y = torch.from_numpy(estimated_density).float().cuda()
 model = ExactGPModel(x, y, likelihood).cuda()
 model = model.cuda()
 
-model_path = "./results/GP_mass_all_clusters_aug06_t1007"
+model_path = "../../results/GP_mass_all_clusters_aug06_t1007"
 # Load saved model weights
 checkpoint = torch.load(f'{model_path}/model.pth')
 

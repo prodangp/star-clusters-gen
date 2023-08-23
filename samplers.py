@@ -3,18 +3,8 @@ import numpy as np
 import time
 import torch
 import scipy.stats as st
-from utils import GRAV_CONST, M_SOLAR, PC
 from numpy.random import default_rng
 rng = default_rng()
-
-
-def predict_density(model, likelihood, grid_point):
-    grid_point = torch.from_numpy(grid_point).float().unsqueeze(0).cuda()
-    # f_preds = self.model(grid_point)
-    y_preds = likelihood(model(grid_point))
-    with torch.no_grad():
-        return y_preds.mean[0].cpu().numpy()
-    # return y_preds.sample()[0].cpu().numpy()
 
 
 class Sampler:
@@ -40,25 +30,6 @@ class Sampler:
 
     def set_bounds(self, bounds):
         self.bounds = bounds
-
-    def _interpolate(self, point):
-        """
-        TODO? - i am not sure if it is needed - it depends on the grid step and
-        the number of stars in the sample
-
-        Use linear interpolation to estimate the density at a point.
-
-        Parameters
-        ----------
-        point: array
-            An array of shape (D,) containing the point at which to estimate the density.
-
-        Returns
-        -------
-        density: float
-            The estimated density at the point.
-        """
-        return
 
     def generate_new_samples(self, mean, cov, size, truncated=False):
         """

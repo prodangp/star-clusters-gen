@@ -20,7 +20,7 @@ def estimate_density_2(x, n_neighbors=10):
     return density
 
 
-clusters = Clusters(features='all', mass='log', path='./data/')
+clusters = Clusters(features='all', mass='log', path='../data/')
 c, name = clusters.next_train(return_name=True)
 # x = get_star_couples(c, dims=3)
 # y = estimate_density_2(c, n_neighbors=10)

@@ -14,7 +14,7 @@ def rosenbrock(x):
 
 
 
-model_path = 'results_rosenbrock/MCMC_10.5k_B1k_may12_t1255'
+model_path = '../results_rosenbrock/MCMC_10.5k_B1k_may12_t1255'
 
 
 # initialize likelihood and model

@@ -11,7 +11,7 @@ from GP_model import ExactGPModel
 from utils import sigma, DEVICE, normalize_density, estimate_density, feature_scaling
 
 
-clusters = Clusters(features='all', mass='log', rescale=False, path='./data/')
+clusters = Clusters(features='all', mass='log', rescale=False, path='../../data/')
 # initialize likelihood and model
 likelihood = gpytorch.likelihoods.GaussianLikelihood()
 X, cluster_name_tr = clusters.next_train(return_name=True)

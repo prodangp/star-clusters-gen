@@ -1,6 +1,5 @@
 import gpytorch
 
-
 class ExactGPModel(gpytorch.models.ExactGP):
     def __init__(self, train_x, train_y, likelihood, linear=False):
         super(ExactGPModel, self).__init__(train_x, train_y, likelihood)

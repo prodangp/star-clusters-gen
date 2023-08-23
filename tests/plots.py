@@ -8,7 +8,7 @@ c_path = 'results_chains/chains_GP_pos_50iter_may31_t1507/gen_cluster_GP_pos_300
 # Define labels for each variable
 labels = ['x', 'y', 'z']
 x = np.load(c_path)
-cluster = Clusters(features='all', path='./data/', rescale=False)
+cluster = Clusters(features='all', path='../data/', rescale=False)
 Xr, name = cluster.next_train(return_name=True)
 print(Xr)
 figure = corner.corner(x[:, 1:], color='red', labels=labels, show_titles=True, bins=20)
