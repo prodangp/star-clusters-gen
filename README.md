@@ -14,4 +14,8 @@ We aim to improve on this state-of-the-art by introducing a set of tools to gene
 </ul>
 
 ### How To Use
-
+<ul>
+    <li>The models can be trained using the scripts found in `scripts/training` subfolder
+    <li>The models we trained using hydrosimulations data from `Ballone et al, 2020` are found in the `results` and `results_chains` folders. Each subfolder coresponds to a model (`model.pth`)and its corresponding outputs.
+    <li>There are two jupyter notebooks that can be used to generate new cluster realizations. Another way is to use the scripts found in `scripts/sampling` subfolder.
+</ul>
